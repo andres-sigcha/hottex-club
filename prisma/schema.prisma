@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Market {
+  id          String       @id @default(cuid())
+  city        String
+  cluster     String
+  slug        String       @unique
+  state       String       @default("AZ")
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  restaurants Restaurant[]
+  subscribers Subscriber[]
+  deals       Deal[]       @relation("DealMarkets")
+}
+
+model Subscriber {
+  id                 String                 @id @default(cuid())
+  phone              String                 @unique
+  zipCode            String
+  neighborhood       String?
+  source             String
+  consentStatus      String                 @default("PENDING")
+  status             String                 @default("ACTIVE")
+  optedInAt          DateTime?
+  confirmedAt        DateTime?
+  unsubscribedAt     DateTime?
+  confirmationCode   String?
+  lastMessageSentAt  DateTime?
+  totalMessagesSent  Int                    @default(0)
+  totalClicks        Int                    @default(0)
+  totalRedemptions   Int                    @default(0)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  marketId           String
+  market             Market                 @relation(fields: [marketId], references: [id])
+  preferences        SubscriberPreference[]
+  campaignRecipients CampaignRecipient[]
+  consentLogs        ConsentLog[]
+  messageEvents      MessageEvent[]
+  clickEvents        ClickEvent[]
+  redemptionEvents   RedemptionEvent[]
+}
+
+model SubscriberPreference {
+  id           String     @id @default(cuid())
+  subscriberId String
+  cuisine      String?
+  dietary      String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+}
+
+model Restaurant {
+  id               String            @id @default(cuid())
+  name             String
+  address1         String
+  city             String
+  zipCode          String
+  cuisine          String
+  contactName      String
+  contactPhone     String?
+  contactEmail     String?
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  marketId         String
+  market           Market            @relation(fields: [marketId], references: [id])
+  deals            Deal[]
+  redemptionEvents RedemptionEvent[]
+}
+
+model Deal {
+  id                     String            @id @default(cuid())
+  title                  String
+  shortOfferText         String
+  redemptionType         String
+  redemptionInstructions String
+  uniqueCouponPrefix     String?
+  sharedPromoCode        String?
+  validFrom              DateTime
+  validTo                DateTime
+  status                 String            @default("DRAFT")
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  restaurantId           String
+  restaurant             Restaurant        @relation(fields: [restaurantId], references: [id])
+  markets                Market[]          @relation("DealMarkets")
+  campaigns              Campaign[]
+  clickEvents            ClickEvent[]
+  redemptionEvents       RedemptionEvent[]
+}
+
+model Campaign {
+  id               String              @id @default(cuid())
+  name             String
+  smsBody          String
+  sendAt           DateTime?
+  sentAt           DateTime?
+  status           String              @default("DRAFT")
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  dealId           String
+  deal             Deal                @relation(fields: [dealId], references: [id])
+  recipients       CampaignRecipient[]
+  messageEvents    MessageEvent[]
+  clickEvents      ClickEvent[]
+  redemptionEvents RedemptionEvent[]
+}
+
+model CampaignRecipient {
+  id           String     @id @default(cuid())
+  campaignId   String
+  subscriberId String
+  status       String     @default("queued")
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  clickedAt    DateTime?
+  redeemedAt   DateTime?
+  createdAt    DateTime   @default(now())
+  campaign     Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, subscriberId])
+}
+
+model MessageEvent {
+  id           String      @id @default(cuid())
+  subscriberId String?
+  campaignId   String?
+  twilioSid    String?
+  direction    String
+  type         String
+  body         String
+  status       String
+  fromNumber   String
+  toNumber     String
+  createdAt    DateTime    @default(now())
+  subscriber   Subscriber? @relation(fields: [subscriberId], references: [id])
+  campaign     Campaign?   @relation(fields: [campaignId], references: [id])
+}
+
+model ClickEvent {
+  id           String      @id @default(cuid())
+  campaignId   String
+  dealId       String
+  subscriberId String?
+  createdAt    DateTime    @default(now())
+  userAgent    String?
+  ipAddress    String?
+  campaign     Campaign    @relation(fields: [campaignId], references: [id])
+  deal         Deal        @relation(fields: [dealId], references: [id])
+  subscriber   Subscriber? @relation(fields: [subscriberId], references: [id])
+}
+
+model RedemptionEvent {
+  id             String      @id @default(cuid())
+  campaignId     String?
+  dealId         String
+  subscriberId   String?
+  restaurantId   String
+  redemptionCode String?
+  method         String
+  notes          String?
+  createdAt      DateTime    @default(now())
+  campaign       Campaign?   @relation(fields: [campaignId], references: [id])
+  deal           Deal        @relation(fields: [dealId], references: [id])
+  subscriber     Subscriber? @relation(fields: [subscriberId], references: [id])
+  restaurant     Restaurant  @relation(fields: [restaurantId], references: [id])
+}
+
+model ConsentLog {
+  id           String     @id @default(cuid())
+  subscriberId String
+  eventType    String
+  message      String
+  source       String
+  ipAddress    String?
+  createdAt    DateTime   @default(now())
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+}
+
+model Setting {
+  id               String   @id @default(cuid())
+  quietHoursStart  Int      @default(21)
+  quietHoursEnd    Int      @default(8)
+  optInTemplate    String
+  welcomeTemplate  String
+  helpTemplate     String
+  stopTemplate     String
+  twilioFromNumber String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
