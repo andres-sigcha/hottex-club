@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ConsentStatus, SubscriberStatus, RedemptionType, DealStatus, CampaignStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -88,8 +88,8 @@ async function main() {
         zipCode: ['85017', '85014', '85251', '85301', '85382'][i % 5],
         neighborhood: ['Downtown', 'Arcadia', 'Old Town', 'Westgate', 'Arrowhead'][i % 5],
         source: ['meta-ads', 'restaurant-flyer', 'organic', 'qr-poster'][i % 4],
-        consentStatus: 'ACTIVE',
-        status: i % 11 === 0 ? 'UNSUBSCRIBED' : 'ACTIVE',
+        consentStatus: ConsentStatus.ACTIVE,
+        status: i % 11 === 0 ? SubscriberStatus.UNSUBSCRIBED : SubscriberStatus.ACTIVE,
         optedInAt: new Date(Date.now() - i * 86400000),
         confirmedAt: new Date(Date.now() - i * 86400000 + 300000),
         unsubscribedAt: i % 11 === 0 ? new Date(Date.now() - i * 3600000) : null,
@@ -125,13 +125,13 @@ async function main() {
       data: {
         title: `Deal ${i + 1}: ${['BOGO tacos', '2-for-1 bowls', '$8 lunch combo', 'Free dessert'][i % 4]}`,
         shortOfferText: `Limited-time local offer #${i + 1}`,
-        redemptionType: ['SHARED_CODE', 'QR_PAGE', 'SHOW_TEXT', 'UNIQUE_CODE'][i % 4],
+        redemptionType: [RedemptionType.SHARED_CODE, RedemptionType.QR_PAGE, RedemptionType.SHOW_TEXT, RedemptionType.UNIQUE_CODE][i % 4],
         redemptionInstructions: 'Show this text or landing page to cashier before payment.',
         sharedPromoCode: i % 4 === 0 ? `HOT${100 + i}` : null,
         uniqueCouponPrefix: i % 4 === 3 ? `UNI${i}` : null,
         validFrom: new Date(),
         validTo: new Date(Date.now() + 5 * 86400000),
-        status: i < 4 ? 'SENT' : 'DRAFT',
+        status: i < 4 ? DealStatus.SENT : DealStatus.DRAFT,
         restaurantId: restaurants[i % restaurants.length].id,
         markets: { connect: [{ id: markets[i % markets.length].id }] },
       },
@@ -144,7 +144,7 @@ async function main() {
       data: {
         name: `Phoenix Lunch Push ${i + 1}`,
         smsBody: `HotText: ${deals[i].title}. Tap {{link}}. Reply STOP to opt out.`,
-        status: i < 3 ? 'SENT' : 'DRAFT',
+        status: i < 3 ? CampaignStatus.SENT : CampaignStatus.DRAFT,
         sentAt: i < 3 ? new Date(Date.now() - i * 7200000) : null,
         dealId: deals[i].id,
       },

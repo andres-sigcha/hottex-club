@@ -3,8 +3,56 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum ConsentStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+enum SubscriberStatus {
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+enum DealStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  EXPIRED
+}
+
+enum RedemptionType {
+  UNIQUE_CODE
+  SHARED_CODE
+  QR_PAGE
+  SHOW_TEXT
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELED
+}
+
+enum MessageDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum MessageType {
+  CAMPAIGN
+  WELCOME
+  OPTIN_CONFIRM
+  HELP
+  STOP
+  SYSTEM
 }
 
 model AdminUser {
@@ -36,8 +84,8 @@ model Subscriber {
   zipCode            String
   neighborhood       String?
   source             String
-  consentStatus      String                 @default("PENDING")
-  status             String                 @default("ACTIVE")
+  consentStatus      ConsentStatus          @default(PENDING)
+  status             SubscriberStatus       @default(ACTIVE)
   optedInAt          DateTime?
   confirmedAt        DateTime?
   unsubscribedAt     DateTime?
@@ -91,13 +139,13 @@ model Deal {
   id                     String            @id @default(cuid())
   title                  String
   shortOfferText         String
-  redemptionType         String
+  redemptionType         RedemptionType
   redemptionInstructions String
   uniqueCouponPrefix     String?
   sharedPromoCode        String?
   validFrom              DateTime
   validTo                DateTime
-  status                 String            @default("DRAFT")
+  status                 DealStatus        @default(DRAFT)
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
   restaurantId           String
@@ -114,7 +162,7 @@ model Campaign {
   smsBody          String
   sendAt           DateTime?
   sentAt           DateTime?
-  status           String              @default("DRAFT")
+  status           CampaignStatus      @default(DRAFT)
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   dealId           String
@@ -142,19 +190,19 @@ model CampaignRecipient {
 }
 
 model MessageEvent {
-  id           String      @id @default(cuid())
+  id           String           @id @default(cuid())
   subscriberId String?
   campaignId   String?
   twilioSid    String?
-  direction    String
-  type         String
+  direction    MessageDirection
+  type         MessageType
   body         String
   status       String
   fromNumber   String
   toNumber     String
-  createdAt    DateTime    @default(now())
-  subscriber   Subscriber? @relation(fields: [subscriberId], references: [id])
-  campaign     Campaign?   @relation(fields: [campaignId], references: [id])
+  createdAt    DateTime         @default(now())
+  subscriber   Subscriber?       @relation(fields: [subscriberId], references: [id])
+  campaign     Campaign?         @relation(fields: [campaignId], references: [id])
 }
 
 model ClickEvent {
